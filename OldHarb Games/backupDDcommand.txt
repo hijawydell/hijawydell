@@ -1,0 +1,119 @@
+ backing up entire hard disks or partitions
+dd if=/dev/sda2 | gzip > DrSamWinXPsda2DD.gz
+
+Restoring partitions
+gzip -dc DrSamWinXPsda2DD.gz | dd of=/dev/sda2
+
+
+Backup an entire hard disk using dd command
+
+The ' dd ' command is one of the original Unix utilities and should be in everyone's tool box. It can strip headers, extract parts of binary files and write into the middle of floppy disks; it is used by the Linux kernel Makefiles to make boot images. It can be used to copy and convert magnetic tape formats, convert between ASCII and EBCDIC, swap bytes, and force to upper and lowercase.
+
+For blocked I/O, the dd command has no competition in the standard tool set. One could write a custom utility to do specific I/O or formatting but, as dd is already available almost everywhere, it makes sense to use it.
+
+Like most well-behaved commands, dd reads from its standard input and writes to its standard output, unless a command line specification has been given. This allows dd to be used in pipes, and remotely with the rsh remote shell command.
+
+Unlike most commands, dd uses a keyword=value format for its parameters. This was reputedly modeled after IBM System/360 JCL, which had an elaborate DD 'Dataset Definition' specification for I/O devices. A complete listing of all keywords is available from GNU dd with
+
+# dd --help
+
+For more options check dd man page
+
+Using dd you can create backups of an entire harddisk or just a parts of it. This is also usefull to quickly copy installations to similar machines. It will only work on disks that are exactly the same in disk geometry, meaning they have to the same model from the same brand.
+
+full hard disk copy
+
+dd if=/dev/hdx of=/dev/hdy
+dd if=/dev/hdx of=/path/to/image
+dd if=/dev/hdx | gzip > /path/to/image.gz
+
+Hdx could be hda, hdb etc. In the second example gzip is used to compress the image if it is really just a backup.
+
+Restore Backup of hard disk copy
+
+dd if=/path/to/image of=/dev/hdx
+
+gzip -dc /path/to/image.gz | dd of=/dev/hdx
+
+MBR backup
+
+In order to backup only the first few bytes containing the MBR and the partition table you can use dd as well.
+
+dd if=/dev/hdx of=/path/to/image count=1 bs=512
+
+MBR restore
+
+dd if=/path/to/image of=/dev/hdx
+
+Add "count=1 bs=446" to exclude the partition table from being written to disk. You can manually restore the table.
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------
+
+1. BACKUP
+---------
+With boot disk or type "bsd.rd" at boot prompt (if you kept it at
+installation process)
+
+# make our new hard disk (wd1) visible
+cd /dev
+chmod 777 MAKEDEV
+./MAKEDEV wd1
+
+# format it and create wd1a partition
+fdisk -i wd1
+disklabel -E wd1
+newfs wd1a
+
+# mount it
+mount /dev/wd1a /mnt
+
+# here we use our installed gzip to be able to compress
+# we safe it on our backup hard disk, version numbers may
+# change depending your openbsd version
+mount /dev/wd0a /mnt2
+cp /mnt2/usr/bin/gzip /mnt
+cp /mnt2/usr/lib/libz.so.4.1 /mnt
+cp /mnt2/usr/lib/libc.so.38.2 /mnt
+cp /mnt2/usr/libexec/ld.so /mnt
+umount /mnt2
+
+# we replace the ramdisk gzip
+rm -f /usr/bin/gzip
+ln -s /mnt/gzip /usr/bin/gzip
+ln -s /mnt /usr/lib
+ln -s /mnt /usr/libexec
+
+# finally, the backup with dd and gzip
+dd if=/dev/wd0a | gzip -9 > /mnt/backup.gz
+
+# here is the way without gzip, if u're mad
+# dd if=/dev/wd0a of=/mnt/backup
+
+2. RESTORE
+----------
+With boot disk or type "bsd.rd" at boot prompt
+
+# make our new hard disk (wd1) visible
+cd /dev
+chmod 777 MAKEDEV
+./MAKEDEV wd1
+
+# mount it
+mount /dev/wd1a /mnt
+
+# format main hard disk
+newfs wd0a
+
+# restore backup
+gunzip /mnt/backup.gz - | dd of=/dev/wd0a
+
+# if archive not gzipped
+# dd if=/mnt/backup of=/dev/wd0a
